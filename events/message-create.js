@@ -134,8 +134,9 @@ export async function onMessageCreate(message) {
 
     userMessages.push(message.content);
 
+    // Make API call.
     const gptResponse = await chat(userMessages, assistantMessages);
-    const assistantReply = await message.reply(gptResponse);
+    const assistantReply = await message.reply(gptResponse, { split: true });
 
     await updateMetadata(
         metadataMessage,
