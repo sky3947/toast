@@ -1,10 +1,10 @@
-import { SlashCommandBuilder, userMention } from "discord.js";
+import { ChatInputCommandInteraction, SlashCommandBuilder, userMention } from "discord.js";
 import { chat } from "../gpt-interface.js";
 
 export const chatCommand = {
     data: new SlashCommandBuilder()
         .setName('chat')
-        .setDescription('Type a message to chat with toast. This command gives toast no message history.')
+        .setDescription('Type a message to chat with toast with no chat history.')
         .addStringOption(option =>
             option
             .setName('input')
@@ -12,9 +12,10 @@ export const chatCommand = {
             .setRequired(true)
             .setMaxLength(2048)
         ),
+    /**
+     * @param {ChatInputCommandInteraction<>} interaction 
+     */
     async execute(interaction) {
-        // console.log(interaction.channel.isThread());
-
         // Defer message to buy time for processing.
         await interaction.deferReply({ ephemeral: true });
         const input = interaction.options.getString('input');

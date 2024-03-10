@@ -4,6 +4,11 @@ import 'dotenv/config';
 const openai = new OpenAI({ apiKey: process.env.CHATGPT_KEY });
 const botInstructions = process.env.BOT_INSTRUCTIONS;
 
+/**
+ * @param {string[]} userMessages 
+ * @param {string[]} assistantMessages 
+ * @returns {Promise<string>}
+ */
 export async function chat(userMessages, assistantMessages) {
     userMessages = userMessages || [];
     assistantMessages = assistantMessages || [];
