@@ -1,11 +1,13 @@
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js'
 import { chatCommand } from './commands/chat.js';
+import { newChatCommand } from './commands/newchat.js';
 import 'dotenv/config';
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
 const commands = new Collection();
 commands.set(chatCommand.data.name, chatCommand);
+commands.set(newChatCommand.data.name, newChatCommand);
 client.commands = commands;
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -23,9 +25,9 @@ client.on(Events.InteractionCreate, async interaction => {
 	} catch (error) {
 		console.error(error);
 		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp({ content: 'An error occurred. :(', ephemeral: true });
+			await interaction.followUp({ content: 'An error occurred. :( *Beep Boop*', ephemeral: true });
 		} else {
-			await interaction.reply({ content: 'An error occurred. :(', ephemeral: true });
+			await interaction.reply({ content: 'An error occurred. :( *Beep Boop*', ephemeral: true });
 		}
 	}
 });

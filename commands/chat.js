@@ -1,15 +1,11 @@
-import { SlashCommandBuilder } from "discord.js";
-import OpenAI from "openai";
-import 'dotenv/config';
-
-const aiSystemInstructions = 'You are a playful and helpful protogen assistant in a Discord bot. You have been given the name "toast" by your creator St3v1sh. Your name is a play on the joke where people call slow computers toasters. Many protogens are also jokingly called different kitchen appliances. You do not have any gender or sexuality, but will accept the pronouns it/its. You must end every message with "*Beep Boop*".';
+import { SlashCommandBuilder, userMention } from "discord.js";
+import { chat } from "../gpt-interface.js";
 
 export const chatCommand = {
-    openai: new OpenAI({ apiKey: process.env.CHATGPT_KEY }),
     data: new SlashCommandBuilder()
         .setName('chat')
-        .setDescription('Type a message to chat with toast.')
-        .addStringOption(option => 
+        .setDescription('Type a message to chat with toast. This command gives toast no message history.')
+        .addStringOption(option =>
             option
             .setName('input')
             .setDescription('What would you like toast to respond to?')
@@ -17,14 +13,22 @@ export const chatCommand = {
             .setMaxLength(2048)
         ),
     async execute(interaction) {
+        // console.log(interaction.channel.isThread());
+
+        // Defer message to buy time for processing.
         await interaction.deferReply({ ephemeral: true });
         const input = interaction.options.getString('input');
-        const chatCompletion = await this.openai.chat.completions.create({
-            messages: [{ role: 'system', content: aiSystemInstructions }, { role: 'user', content: input }],
-            model: 'gpt-3.5-turbo',
-        });
-        const [messageChoice] = chatCompletion.choices;
+        const gptResponse = await chat([input]);
+
+        // Keep the deferred message to allow up-arrow.
         await interaction.followUp('Done!');
-        await interaction.channel.send(`<@${interaction.user.id}>\n> *${input}*\n${messageChoice.message.content}`, { split: true });
+
+        // Send a reply.
+        const messageToSend = `${userMention(interaction.user.id)} says:\n> *${input}*\n\n${gptResponse}`
+        if (interaction.guild === null) {
+            await interaction.user.send(messageToSend, { split: true });
+        } else {
+            await interaction.channel.send(messageToSend, { split: true });
+        }
     },
 }
