@@ -21,8 +21,8 @@ export const chatCommand = {
         const input = interaction.options.getString('input');
         const gptResponse = await chat([input]);
 
-        // Keep the deferred message to allow up-arrow.
-        await interaction.followUp('Done!');
+        // Delete deferred reply.
+        await interaction.deleteReply();
 
         // Send a reply.
         const messageToSend = `${userMention(interaction.user.id)} says:\n> *${input}*\n\n${gptResponse}`
