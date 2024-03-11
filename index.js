@@ -1,4 +1,4 @@
-import { Client, Collection, Events, GatewayIntentBits } from 'discord.js'
+import { ActivityType, Client, Collection, Events, GatewayIntentBits } from 'discord.js'
 import { onMessageCreate } from './events/message-create.js';
 import { chatCommand } from './commands/chat.js';
 import { newChatCommand } from './commands/newchat.js';
@@ -42,6 +42,7 @@ client.on(Events.MessageCreate, onMessageCreate);
 
 // Initialization.
 client.once(Events.ClientReady, readyClient => {
+	client.user.setActivity({ name: '\uD83C\uDF5E', state: 'Running on a toaster', type: ActivityType.Custom });
     console.log(readyClient.user.tag + ' is online *Beep Boop*');
 });
 
