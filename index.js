@@ -3,6 +3,7 @@ import { onMessageCreate } from './events/message-create.js';
 import { chatCommand } from './commands/chat.js';
 import { newChatCommand } from './commands/newchat.js';
 import 'dotenv/config';
+import { imageCommand } from './commands/image.js';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
@@ -10,6 +11,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const commands = new Collection();
 commands.set(chatCommand.data.name, chatCommand);
 commands.set(newChatCommand.data.name, newChatCommand);
+commands.set(imageCommand.data.name, imageCommand);
 client.commands = commands;
 
 // Handle slash commands.
@@ -23,18 +25,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
-	try {
-		await command.execute(interaction);
-	} catch (error) {
-		console.error(error);
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
 
-		const errorReply = { content: 'An error occurred. :( *Beep Boop*', ephemeral: true };
-		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp(errorReply);
-		} else {
-			await interaction.reply(errorReply);
-		}
-	}
+        const errorReply = { content: 'An error occurred. :( *Beep Boop*', ephemeral: true };
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp(errorReply);
+        } else {
+            await interaction.reply(errorReply);
+        }
+    }
 });
 
 // Handle message responses.
@@ -42,7 +44,7 @@ client.on(Events.MessageCreate, onMessageCreate);
 
 // Initialization.
 client.once(Events.ClientReady, readyClient => {
-	client.user.setActivity({ name: '\uD83C\uDF5E', state: 'Running on a toaster', type: ActivityType.Custom });
+    client.user.setActivity({ name: '\uD83C\uDF5E', state: 'Running on a toaster', type: ActivityType.Custom });
     console.log(readyClient.user.tag + ' is online *Beep Boop*');
 });
 

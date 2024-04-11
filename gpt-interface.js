@@ -14,7 +14,7 @@ export async function chat(userMessages, assistantMessages) {
     assistantMessages = assistantMessages || [];
 
     // Prepare messages.
-    const mergedMessages = userMessages.map((message, index) => 
+    const mergedMessages = userMessages.map((message, index) =>
         [
             message === undefined ? undefined : ({
                 role: 'user',
@@ -36,4 +36,22 @@ export async function chat(userMessages, assistantMessages) {
     // Return output.
     const [messageChoice] = chatCompletion.choices;
     return messageChoice.message.content;
+}
+
+/**
+ * @param {string} prompt 
+ * @returns {Promise<OpenAI.Images.Image>}
+ */
+export async function image(prompt) {
+    // Make API call.
+    const imageCompletion = await openai.images.generate({
+        model: 'dall-e-3',
+        prompt: prompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'hd',
+    });
+
+    // Return output.
+    return imageCompletion.data[0];
 }
