@@ -30,7 +30,7 @@ export async function chat(userMessages, assistantMessages) {
     // Make API call.
     const chatCompletion = await openai.chat.completions.create({
         messages: [{ role: 'system', content: botInstructions }, ...mergedMessages],
-        model: 'gpt-4-1106-preview',
+        model: 'gpt-4-turbo',
     });
 
     // Return output.
