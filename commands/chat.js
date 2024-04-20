@@ -28,9 +28,14 @@ export const chatCommand = {
         const messagePrefix = `${userMention(interaction.user.id)} says:\n> *${prompt}*\n`
         const splitMessages = splitMessage(gptResponse, messagePrefix);
 
-        const replyMethod = interaction.guild === null ? interaction.user.send : interaction.channel.send;
-        for (const message of splitMessages) {
-            await replyMethod(message);
+        if (interaction.guild === null) {
+            for (const message of splitMessages) {
+                await interaction.user.send(message);
+            }
+        } else {
+            for (const message of splitMessages) {
+                await interaction.channel.send(message);
+            }
         }
     },
 }
