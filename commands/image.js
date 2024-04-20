@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, userMention } from "discord.js";
-import { image } from "../gpt-interface.js";
+import { MAX_MESSAGE_LENGTH, image } from "../gpt-interface.js";
 
 export const imageCommand = {
     data: new SlashCommandBuilder()
@@ -10,7 +10,7 @@ export const imageCommand = {
                 .setName('prompt')
                 .setDescription('The prompt to generate an image from.')
                 .setRequired(true)
-                .setMaxLength(2048)
+                .setMaxLength(MAX_MESSAGE_LENGTH)
         ),
     /**
      * @param {ChatInputCommandInteraction<>} interaction 

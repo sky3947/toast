@@ -1,2 +1,6 @@
 .env
 node_modules
+playground.js
+playgroundData.md
+playgroundTokens.json
+playgroundResult.md

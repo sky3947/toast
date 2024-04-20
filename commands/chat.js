@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, userMention } from "discord.js";
-import { chat } from "../gpt-interface.js";
+import { MAX_MESSAGE_LENGTH, chat, splitMessage } from "../gpt-interface.js";
 
 export const chatCommand = {
     data: new SlashCommandBuilder()
@@ -10,7 +10,7 @@ export const chatCommand = {
                 .setName('prompt')
                 .setDescription('What would you like toast to respond to?')
                 .setRequired(true)
-                .setMaxLength(2048)
+                .setMaxLength(MAX_MESSAGE_LENGTH)
         ),
     /**
      * @param {ChatInputCommandInteraction<>} interaction 
@@ -24,12 +24,13 @@ export const chatCommand = {
         // Delete deferred reply.
         await interaction.deleteReply();
 
-        // Send a reply.
-        const messageToSend = `${userMention(interaction.user.id)} says:\n> *${prompt}*\n\n${gptResponse}`
-        if (interaction.guild === null) {
-            await interaction.user.send(messageToSend, { split: true });
-        } else {
-            await interaction.channel.send(messageToSend, { split: true });
+        // Send reply.
+        const messagePrefix = `${userMention(interaction.user.id)} says:\n> *${prompt}*\n`
+        const splitMessages = splitMessage(gptResponse, messagePrefix);
+
+        const replyMethod = interaction.guild === null ? interaction.user.send : interaction.channel.send;
+        for (const message of splitMessages) {
+            await replyMethod(message);
         }
     },
 }

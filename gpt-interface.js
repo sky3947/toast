@@ -1,8 +1,13 @@
 import OpenAI from "openai";
+import { unified } from 'unified';
+import markdown from 'remark-parse';
+import fs from 'fs';
 import 'dotenv/config';
 
 const openai = new OpenAI({ apiKey: process.env.CHATGPT_KEY });
 const botInstructions = process.env.BOT_INSTRUCTIONS;
+
+export const MAX_MESSAGE_LENGTH = 2000;
 
 /**
  * @param {string[]} userMessages 
@@ -54,4 +59,111 @@ export async function image(prompt) {
 
     // Return output.
     return imageCompletion.data[0];
+}
+
+/**
+ * @param {import('mdast').RootContent} node
+ * @param {number} depth
+ * @returns {string[]}
+ */
+function parseMDSyntaxTreeRec(node, depth) {
+    if (node.type === 'root') {
+        return node.children.map(node => parseMDSyntaxTreeRec(node, depth));
+    } else if (node.type === 'heading') {
+        return ['#'.repeat(node.depth) + ' ' + node.children.map(node => parseMDSyntaxTreeRec(node, depth).join('')).join('')];
+    } else if (node.type === 'link') {
+        if (node.url.startsWith('mailto:')) return [`<${node.children[0].value}>`];
+        return [`[${node.children.map(node => parseMDSyntaxTreeRec(node, depth).join('')).join('')}](${node.url})`];
+    } else if (node.type === 'list') {
+        const isEmptyListItem = node.children.length === 1 && node.children[0].type === 'listItem' && node.children[0].children.length === 0;
+        if (node.children.length === 0 || isEmptyListItem) {
+            return node.children.map((_, index) => ' '.repeat(depth * 3) + (node.start ? (node.start + index) + '.' : '-'));
+        }
+        return node.children.map((listItem, index) => ' '.repeat(depth * 3) + (node.start ? (node.start + index) + '. ' : '- ') + parseMDSyntaxTreeRec(listItem, depth + 1).join('\n'));
+    } else if (node.type === 'listItem') {
+        return node.children.map(item => parseMDSyntaxTreeRec(item, depth).join('\n'));
+    } else if (node.type === 'paragraph') {
+        return [node.children.map(node => parseMDSyntaxTreeRec(node, depth).join('')).join('')];
+    } else if (node.type === 'inlineCode') {
+        return ['`' + node.value + '`'];
+    } else if (node.type === 'code') {
+        return splitCodeFence(node.lang, node.value);
+    } else if (node.type === 'emphasis') {
+        return [`_${node.children.map(node => parseMDSyntaxTreeRec(node, depth).join('')).join('')}_`];
+    } else if (node.type === 'strong') {
+        return [`**${node.children.map(node => parseMDSyntaxTreeRec(node, depth).join('')).join('')}**`];
+    } else if (node.type === 'blockquote') {
+        return ['> ' + node.children.map(node => parseMDSyntaxTreeRec(node, depth).join('')).join('')];
+    } else if (node.type === 'image') {
+        return [`![${node.alt}](${node.url})`];
+    } else if (node.type === 'break') {
+        return ['\n'];
+    } else if (node.type === 'thematicBreak') {
+        return ['\n'];
+    } else if (node.type === 'text') {
+        return [node.value];
+    } else {
+        console.log('Unexpected node.type=' + node.type);
+        return [node.value];
+    }
+}
+
+/**
+ * @param {string | undefined} lang
+ * @param {string} value
+ * @returns {string[]}
+ */
+function splitCodeFence(lang, value) {
+    const decoratorPrefix = '```' + (lang || '') + '\n';
+    const decoratorPostfix = '\n```';
+    const rawValue = decoratorPrefix + value + decoratorPostfix;
+    if (rawValue.length <= MAX_MESSAGE_LENGTH) {
+        return [rawValue];
+    }
+
+    const decoratorLength = decoratorPrefix.length + decoratorPostfix.length;
+    const parts = value.split('\n');
+    const result = [];
+    let buffer = [];
+    for (const part of parts) {
+        if ([...buffer, part].join('\n').length + decoratorLength > MAX_MESSAGE_LENGTH) {
+            result.push([decoratorPrefix.trimEnd(), ...buffer, decoratorPostfix.trimStart()].join('\n'));
+            buffer = [];
+        }
+        buffer.push(part);
+    }
+    if (buffer.length > 0) {
+        result.push([decoratorPrefix.trimEnd(), ...buffer, decoratorPostfix.trimStart()].join('\n'));
+    }
+
+    return result;
+}
+
+/**
+ * @param {string} message
+ * @return {string[]}
+ */
+export function splitMessage(message, prefix = '') {
+    const tokens = unified()
+        .use(markdown)
+        .parse(message);
+
+    let parts = [prefix, ...parseMDSyntaxTreeRec(tokens, 0)];
+    fs.writeFileSync('playgroundTokens.json', JSON.stringify(tokens, null, 2));
+    parts = parts.flat();
+
+    const messages = [];
+    let buffer = [];
+    for (const part of parts) {
+        if ([...buffer, part].join('\n').length > MAX_MESSAGE_LENGTH) {
+            messages.push([...buffer].join('\n'));
+            buffer = [];
+        }
+        buffer.push(part);
+    }
+    if (buffer.length > 0) {
+        messages.push([...buffer].join('\n'));
+    }
+
+    return messages;
 }

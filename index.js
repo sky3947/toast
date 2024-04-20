@@ -2,8 +2,8 @@ import { ActivityType, Client, Collection, Events, GatewayIntentBits } from 'dis
 import { onMessageCreate } from './events/message-create.js';
 import { chatCommand } from './commands/chat.js';
 import { newChatCommand } from './commands/newchat.js';
-import 'dotenv/config';
 import { imageCommand } from './commands/image.js';
+import 'dotenv/config';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 

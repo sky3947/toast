@@ -1,16 +1,16 @@
 import { Message } from "discord.js";
-import { chat } from "../gpt-interface.js";
+import { chat, splitMessage } from "../gpt-interface.js";
 import 'dotenv/config';
 
 const processingFlag = 'Thinking...';
-const maxChatLength = 100;
+const maxChatLength = 50;
 
 /**
  * @param {string} data 
  * @returns {{
  *     userId: string,
  *     userMessageIndices: number[],
- *     assistantMessageIndices: number[]
+ *     assistantMessageIndices: number[][]
  * } | undefined}
  */
 function parseMetadata(data) {
@@ -24,6 +24,7 @@ function parseMetadata(data) {
 
     const userId = lines[0].slice(2, -1);
     const positiveIntRegex = /^\d+$/;
+    const numberRangeRegex = /^\d+(-\d+)?$/;
     if (!positiveIntRegex.test(userId)) return undefined;
 
     // Case: no chat messages yet.
@@ -42,10 +43,24 @@ function parseMetadata(data) {
     if (rawUserMessageIndices.some(index => !positiveIntRegex.test(index))) return undefined;
 
     const rawAssistantMessageIndices = lines[2].split(' ');
-    if (rawAssistantMessageIndices.some(index => !positiveIntRegex.test(index))) return undefined;
+    if (
+        rawAssistantMessageIndices.some(
+            index => !positiveIntRegex.test(index) && !numberRangeRegex.test(index)
+        )
+    ) {
+        return undefined;
+    }
 
     const userMessageIndices = rawUserMessageIndices.map(index => parseInt(index));
-    const assistantMessageIndices = rawAssistantMessageIndices.map(index => parseInt(index));
+    const assistantMessageIndices = rawAssistantMessageIndices.map(index => {
+        if (index.includes('-')) {
+            const [rawStart, rawEnd] = index.split('-');
+            const start = parseInt(rawStart);
+            const end = parseInt(rawEnd);
+            return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+        }
+        return [parseInt(index)];
+    });
 
     return {
         userId: userId,
@@ -61,17 +76,25 @@ async function toggleThreadLock(metadataMessage) {
     const lines = metadataMessage.content.split('\n');
     const [lastLine] = lines.slice(-1);
 
+    let newContent;
     if (lastLine === processingFlag) {
-        await metadataMessage.edit(lines.slice(0, -1).join('\n'));
+        newContent = lines.slice(0, -1).join('\n');
+        await metadataMessage.edit(newContent);
     } else {
-        await metadataMessage.edit(metadataMessage.content + '\n' + processingFlag);
+        newContent = metadataMessage.content + '\n' + processingFlag;
+        await metadataMessage.edit(newContent);
+    }
+
+    // Wait for Discord to process the edit.
+    while (metadataMessage.content !== newContent) {
+        await new Promise(resolve => setTimeout(resolve, 50));
     }
 }
 
 /**
  * @param {Message<true>} metadataMessage 
  * @param {number[]} userMessageIndices 
- * @param {number[]} assistantMessageIndices 
+ * @param {number[][]} assistantMessageIndices 
  */
 async function updateMetadata(metadataMessage, userMessageIndices, assistantMessageIndices) {
     const lines = metadataMessage.content.split('\n');
@@ -81,11 +104,20 @@ async function updateMetadata(metadataMessage, userMessageIndices, assistantMess
         // User message indices.
         userMessageIndices.join(' '),
         // Assistant message indices.
-        assistantMessageIndices.join(' '),
+        (assistantMessageIndices.map(indices => {
+            if (indices.length === 1) return indices[0];
+            return `${indices[0]}-${indices[indices.length - 1]}`;
+        })).join(' '),
         // Footer.
         lines.slice(lines.length === 3 ? 1 : 3).join('\n')
     ];
-    await metadataMessage.edit(newMetadata.join('\n'));
+    const newContent = newMetadata.join('\n');
+    await metadataMessage.edit(newContent);
+
+    // Wait for Discord to process the edit.
+    while (metadataMessage.content !== newContent) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
 }
 
 /**
@@ -126,9 +158,13 @@ export async function onMessageCreate(message) {
             userMessages.push(messages.at(index).content);
             continue;
         }
-        if (metadata.assistantMessageIndices.includes(index)) {
-            assistantMessages.push(messages.at(index).content);
-            continue;
+        for (const ranges of metadata.assistantMessageIndices) {
+            if (ranges.includes(index)) {
+                assistantMessages.push(
+                    ranges.map(assistantMessageIndex => messages.at(assistantMessageIndex).content).join('\n')
+                );
+                continue;
+            }
         }
     }
 
@@ -136,12 +172,19 @@ export async function onMessageCreate(message) {
 
     // Make API call.
     const gptResponse = await chat(userMessages, assistantMessages);
-    const assistantReply = await message.reply(gptResponse, { split: true });
+    const gptMessages = splitMessage(gptResponse);
+    const assistantReplies = [];
+    for (const gptMessage of gptMessages) {
+        const newAssistantMessage = await message.reply(gptMessage)
+        assistantReplies.push(newAssistantMessage);
+    }
+
+    const newAssistantMessageIndices = assistantReplies.map(reply => reply.position);
 
     await updateMetadata(
         metadataMessage,
         [...metadata.userMessageIndices, message.position],
-        [...metadata.assistantMessageIndices, assistantReply.position]
+        [...metadata.assistantMessageIndices, newAssistantMessageIndices]
     );
 
     // Unlock the thread after finishing.
