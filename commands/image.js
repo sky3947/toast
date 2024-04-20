@@ -25,11 +25,11 @@ export const imageCommand = {
         await interaction.deleteReply();
 
         // Send a reply.
-        const messageToSend = `${userMention(interaction.user.id)} wants to generate an image:\n> *${prompt}*\n\nRevised prompt by OpenAI:\n> ${revised_prompt}\n\n[Image Link](${url})`
+        const messageToSend = `${userMention(interaction.user.id)} wants to generate an image:\n> *${prompt}*\n\nRevised prompt by OpenAI:\n> ${revised_prompt}\n`
         if (interaction.guild === null) {
-            await interaction.user.send(messageToSend, { split: true });
+            await interaction.user.send({ content: messageToSend, files: [{ attachment: url, name: 'image.png', description: revised_prompt }] });
         } else {
-            await interaction.channel.send(messageToSend, { split: true });
+            await interaction.channel.send({ content: messageToSend, files: [{ attachment: url, name: 'image.png', description: revised_prompt }] });
         }
     },
 }
