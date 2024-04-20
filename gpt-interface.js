@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import { unified } from 'unified';
 import markdown from 'remark-parse';
-import fs from 'fs';
 import 'dotenv/config';
 
 const openai = new OpenAI({ apiKey: process.env.CHATGPT_KEY });
@@ -149,7 +148,6 @@ export function splitMessage(message, prefix = '') {
         .parse(message);
 
     let parts = [prefix, ...parseMDSyntaxTreeRec(tokens, 0)];
-    fs.writeFileSync('playgroundTokens.json', JSON.stringify(tokens, null, 2));
     parts = parts.flat();
 
     const messages = [];
