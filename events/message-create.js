@@ -127,7 +127,12 @@ export async function onMessageCreate(message) {
     // Only react to messages in a chatroom thread with toast.
     if (!message.channel.isThread()) return;
     if (message.author.bot) return;
-    if ((await message.channel.fetchOwner()).thread.ownerId !== process.env.DISCORD_CLIENT_ID) return;
+
+    try {
+        if ((await message.channel.fetchOwner()).thread.ownerId !== process.env.DISCORD_CLIENT_ID) return;
+    } catch (error) {
+        return
+    }
 
     // Fetch messages and metadata.
     const messages = (await message.channel.messages.fetch()).reverse();
