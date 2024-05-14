@@ -8,9 +8,21 @@ const botInstructions = process.env.BOT_INSTRUCTIONS;
 
 export const MAX_MESSAGE_LENGTH = 2000;
 
+export class GPTMessage {
+    /**
+     * @param {string} text
+     * @param {string | undefined} imageURL
+     * @return {GPTMessage}
+     */
+    constructor(text, imageURL) {
+        this.text = text;
+        this.imageURL = imageURL;
+    }
+}
+
 /**
- * @param {string[]} userMessages 
- * @param {string[]} assistantMessages 
+ * @param {GPTMessage[]} userMessages
+ * @param {GPTMessage[]} assistantMessages
  * @returns {Promise<string>}
  */
 export async function chat(userMessages, assistantMessages) {
@@ -22,11 +34,27 @@ export async function chat(userMessages, assistantMessages) {
         [
             message === undefined ? undefined : ({
                 role: 'user',
-                content: message,
+                content: [
+                    {
+                        type: 'text',
+                        text: message.text,
+                    },
+                    message.imageURL && {
+                        type: 'image_url',
+                        image_url: {
+                            url: message.imageURL,
+                        },
+                    },
+                ].filter(content => content !== undefined),
             }),
             assistantMessages[index] === undefined ? undefined : ({
                 role: 'assistant',
-                content: assistantMessages[index],
+                content: [
+                    {
+                        type: 'text',
+                        text: assistantMessages[index].text,
+                    }
+                ],
             }),
         ]
     ).flat().filter(message => message !== undefined);
@@ -34,7 +62,7 @@ export async function chat(userMessages, assistantMessages) {
     // Make API call.
     const chatCompletion = await openai.chat.completions.create({
         messages: [{ role: 'system', content: botInstructions }, ...mergedMessages],
-        model: 'gpt-4-turbo',
+        model: 'gpt-4o',
     });
 
     // Return output.
@@ -43,7 +71,7 @@ export async function chat(userMessages, assistantMessages) {
 }
 
 /**
- * @param {string} prompt 
+ * @param {string} prompt
  * @returns {Promise<OpenAI.Images.Image>}
  */
 export async function image(prompt) {

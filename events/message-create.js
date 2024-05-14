@@ -1,12 +1,12 @@
 import { Message } from "discord.js";
-import { chat, splitMessage } from "../gpt-interface.js";
+import { GPTMessage, chat, splitMessage } from "../gpt-interface.js";
 import 'dotenv/config';
 
 const processingFlag = 'Thinking...';
 const maxChatLength = 50;
 
 /**
- * @param {string} data 
+ * @param {string} data
  * @returns {{
  *     userId: string,
  *     userMessageIndices: number[],
@@ -92,9 +92,9 @@ async function toggleThreadLock(metadataMessage) {
 }
 
 /**
- * @param {Message<true>} metadataMessage 
- * @param {number[]} userMessageIndices 
- * @param {number[][]} assistantMessageIndices 
+ * @param {Message<true>} metadataMessage
+ * @param {number[]} userMessageIndices
+ * @param {number[][]} assistantMessageIndices
  */
 async function updateMetadata(metadataMessage, userMessageIndices, assistantMessageIndices) {
     const lines = metadataMessage.content.split('\n');
@@ -121,7 +121,7 @@ async function updateMetadata(metadataMessage, userMessageIndices, assistantMess
 }
 
 /**
- * @param {Message<boolean>} message 
+ * @param {Message<boolean>} message
  */
 export async function onMessageCreate(message) {
     // Only react to messages in a chatroom thread with toast.
@@ -160,20 +160,22 @@ export async function onMessageCreate(message) {
     let assistantMessages = [];
     for (let index = 0; index < messages.size; index++) {
         if (metadata.userMessageIndices.includes(index)) {
-            userMessages.push(messages.at(index).content);
+            userMessages.push(new GPTMessage(messages.at(index).content));
             continue;
         }
         for (const ranges of metadata.assistantMessageIndices) {
             if (ranges.includes(index)) {
                 assistantMessages.push(
-                    ranges.map(assistantMessageIndex => messages.at(assistantMessageIndex).content).join('\n')
+                    new GPTMessage(
+                        ranges.map(assistantMessageIndex => messages.at(assistantMessageIndex).content).join('\n')
+                    )
                 );
                 continue;
             }
         }
     }
 
-    userMessages.push(message.content);
+    userMessages.push(new GPTMessage(message.content));
 
     // Make API call.
     const gptResponse = await chat(userMessages, assistantMessages);
