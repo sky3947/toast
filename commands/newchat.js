@@ -5,7 +5,7 @@ export const newChatCommand = {
         .setName('newchat')
         .setDescription('Creates a new chat thread with toast to give it chat history.'),
     /**
-     * @param {ChatInputCommandInteraction<>} interaction 
+     * @param {ChatInputCommandInteraction<>} interaction
      */
     async execute(interaction) {
         // Defer message to buy time for processing.
@@ -27,7 +27,7 @@ export const newChatCommand = {
             await interaction.followUp(`*Beep Boop* Chatroom created: ${thread.url}`);
 
             // Populate metadata.
-            thread.send(`${userMention(interaction.user.id)}\nHello! This message sets up some metadata for our conversation. Please wait for my response before sending additional messages. Please do not delete messages because that will mess up my processing. Chat with me by sending messages to this thread! *Beep Boop*`);
+            thread.send(`${userMention(interaction.user.id)}\nHello! This message sets up some metadata for our conversation. Please wait for my response before sending additional messages. Please do not delete messages because that will mess up my processing. If you send an image, only the first image will be taken into consideration. OpenAI's max image size is 20MB. Chat with me by sending messages to this thread! *Beep Boop*`);
         } catch (error) {
             await interaction.followUp('Cannot create a chat thread here :( *Beep Boop*');
         }

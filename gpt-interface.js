@@ -1,12 +1,15 @@
 import OpenAI from "openai";
 import { unified } from 'unified';
 import markdown from 'remark-parse';
+import { Attachment } from "discord.js";
 import 'dotenv/config';
 
 const openai = new OpenAI({ apiKey: process.env.CHATGPT_KEY });
 const botInstructions = process.env.BOT_INSTRUCTIONS;
 
 export const MAX_MESSAGE_LENGTH = 2000;
+
+export const ACCEPTED_IMAGE_TYPES = ['png', 'jpeg', 'gif', 'webp'];
 
 export class GPTMessage {
     /**
@@ -86,6 +89,25 @@ export async function image(prompt) {
 
     // Return output.
     return imageCompletion.data[0];
+}
+
+/**
+ * @param {Attachment} attachment
+ * @returns
+ */
+export function isImageAttachmentValid(attachment) {
+    if (!attachment) {
+        return false;
+    }
+    // OpenAI's max image size is 20MB.
+    if (attachment.size > 20000000) {
+        return false;
+    }
+    // OpenAI only accepts PNG, JPEG, GIF, and WebP images.
+    if (!ACCEPTED_IMAGE_TYPES.includes(attachment.contentType.split('/').pop())) {
+        return false;
+    }
+    return true;
 }
 
 /**

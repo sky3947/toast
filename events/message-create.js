@@ -1,5 +1,5 @@
 import { Message } from "discord.js";
-import { GPTMessage, chat, splitMessage } from "../gpt-interface.js";
+import { GPTMessage, chat, splitMessage, isImageAttachmentValid } from "../gpt-interface.js";
 import 'dotenv/config';
 
 const processingFlag = 'Thinking...';
@@ -53,12 +53,14 @@ function parseMetadata(data) {
 
     const userMessageIndices = rawUserMessageIndices.map(index => parseInt(index));
     const assistantMessageIndices = rawAssistantMessageIndices.map(index => {
+        // Parse range of message indices.
         if (index.includes('-')) {
             const [rawStart, rawEnd] = index.split('-');
             const start = parseInt(rawStart);
             const end = parseInt(rawEnd);
             return Array.from({ length: end - start + 1 }, (_, i) => start + i);
         }
+        // Parse single message index.
         return [parseInt(index)];
     });
 
@@ -128,6 +130,7 @@ export async function onMessageCreate(message) {
     if (!message.channel.isThread()) return;
     if (message.author.bot) return;
 
+    // Make sure toast has access to and owns the thread.
     try {
         if ((await message.channel.fetchOwner()).thread.ownerId !== process.env.DISCORD_CLIENT_ID) return;
     } catch (error) {
@@ -160,7 +163,13 @@ export async function onMessageCreate(message) {
     let assistantMessages = [];
     for (let index = 0; index < messages.size; index++) {
         if (metadata.userMessageIndices.includes(index)) {
-            userMessages.push(new GPTMessage(messages.at(index).content));
+            const curMessage = messages.at(index);
+            let attachment = curMessage.attachments.first();
+            if (!isImageAttachmentValid(attachment)) {
+                attachment = undefined;
+            }
+
+            userMessages.push(new GPTMessage(curMessage.content, attachment && attachment.url));
             continue;
         }
         for (const ranges of metadata.assistantMessageIndices) {
@@ -175,7 +184,21 @@ export async function onMessageCreate(message) {
         }
     }
 
-    userMessages.push(new GPTMessage(message.content));
+    const hasAttachment = message.attachments.size > 0;
+    const attachmentIsValid = message.attachments.size === 1 && isImageAttachmentValid(message.attachments.first());
+
+    // Check if the image attachment is valid.
+    if (hasAttachment && !attachmentIsValid) {
+        message.reply(`Sorry, I can't understand your attachment(s)... \uD83D\uDE14 I can only understand one image at a time. If you sent an image, please remember that OpenAI's max image size is 20MB. Try again with another image. *Beep Boop*`);
+        await toggleThreadLock(metadataMessage);
+        return;
+    }
+
+    // Push the new user message.
+    userMessages.push(new GPTMessage(
+        message.content,
+        hasAttachment ? message.attachments.first().url : undefined
+    ));
 
     // Make API call.
     const gptResponse = await chat(userMessages, assistantMessages);

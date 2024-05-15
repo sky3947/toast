@@ -1,7 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, userMention } from "discord.js";
-import { MAX_MESSAGE_LENGTH, GPTMessage, chat, splitMessage } from "../gpt-interface.js";
-
-const acceptedImageTypes = ['png', 'jpeg', 'gif', 'webp'];
+import { MAX_MESSAGE_LENGTH, GPTMessage, chat, splitMessage, isImageAttachmentValid } from "../gpt-interface.js";
 
 export const chatCommand = {
     data: new SlashCommandBuilder()
@@ -30,14 +28,9 @@ export const chatCommand = {
         const prompt = interaction.options.getString('prompt');
         const attachment = interaction.options.getAttachment('image');
 
-        // OpenAI's max image size is 20MB.
-        if (attachment && attachment.size > 20000000) {
-            await interaction.followUp('Cannot process images larger than 20MB.');
-            return;
-        }
-        // OpenAI only accepts PNG, JPEG, GIF, and WebP images.
-        if (attachment && !acceptedImageTypes.includes(attachment.contentType.split('/').pop())) {
-            await interaction.followUp('Only PNG, JPEG, GIF, and WebP images are accepted.');
+        // OpenAI only accepts PNG, JPEG, GIF, and WebP images no larger than 20MB.
+        if (!!attachment && !isImageAttachmentValid(attachment)) {
+            await interaction.followUp('Sorry, but only PNG, JPEG, GIF, and WebP images no larger than 20MB are accepted. *Beep Boop*');
             return;
         }
 
