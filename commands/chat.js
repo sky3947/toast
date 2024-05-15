@@ -20,6 +20,7 @@ export const chatCommand = {
                 .setDescription('Is there something toast should look at?')
                 .setRequired(false)
         ),
+
     /**
      * @param {ChatInputCommandInteraction<>} interaction
      */
@@ -35,7 +36,7 @@ export const chatCommand = {
             return;
         }
         // OpenAI only accepts PNG, JPEG, GIF, and WebP images.
-        if (attachment && !acceptedImageTypes.includes(attachment.name.split('.').pop())) {
+        if (attachment && !acceptedImageTypes.includes(attachment.contentType.split('/').pop())) {
             await interaction.followUp('Only PNG, JPEG, GIF, and WebP images are accepted.');
             return;
         }
